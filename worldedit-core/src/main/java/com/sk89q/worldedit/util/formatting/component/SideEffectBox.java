@@ -1,0 +1,88 @@
+/*
+ * WorldEdit, a Minecraft world manipulation toolkit
+ * Copyright (C) sk89q <http://www.sk89q.com>
+ * Copyright (C) WorldEdit team and contributors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package com.sk89q.worldedit.util.formatting.component;
+
+import com.boydti.fawe.config.Caption;
+import com.sk89q.worldedit.WorldEdit;
+import com.sk89q.worldedit.util.SideEffect;
+import com.sk89q.worldedit.util.SideEffectSet;
+import com.sk89q.worldedit.util.formatting.text.Component;
+import com.sk89q.worldedit.util.formatting.text.TextComponent;
+import com.sk89q.worldedit.util.formatting.text.event.ClickEvent;
+import com.sk89q.worldedit.util.formatting.text.event.HoverEvent;
+import com.sk89q.worldedit.util.formatting.text.format.TextColor;
+
+import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
+import java.util.stream.Collectors;
+
+public class SideEffectBox extends PaginationBox {
+
+    private static List<SideEffect> sideEffects;
+
+    private SideEffectSet sideEffectSet;
+
+    private static List<SideEffect> getSideEffects() {
+        if (sideEffects == null) {
+            sideEffects = WorldEdit.getInstance().getPlatformManager().getSupportedSideEffects()
+                    .stream()
+                    .sorted(Comparator.comparing(Enum::name))
+                    .collect(Collectors.toList());
+        }
+
+        return sideEffects;
+    }
+
+    public SideEffectBox(SideEffectSet sideEffectSet) {
+        super("Side Effects");
+
+        this.sideEffectSet = sideEffectSet;
+    }
+
+    private static final SideEffect.State[] SHOWN_VALUES = {SideEffect.State.OFF, SideEffect.State.ON};
+
+    @Override
+    public Component getComponent(int number) {
+        SideEffect effect = getSideEffects().get(number);
+        SideEffect.State state = this.sideEffectSet.getState(effect);
+
+        TextComponent.Builder builder = TextComponent.builder();
+        builder = builder.append(Caption.of(effect.getDisplayName(), TextColor.YELLOW)
+                .hoverEvent(HoverEvent.of(HoverEvent.Action.SHOW_TEXT, Caption.of(effect.getDescription()))));
+        for (SideEffect.State uiState : SHOWN_VALUES) {
+            builder = builder.append(TextComponent.space());
+            builder = builder.append(Caption.of(uiState.getDisplayName(), uiState == state ? TextColor.WHITE : TextColor.GRAY)
+                    .clickEvent(ClickEvent.runCommand("//perf -h " + effect.name().toLowerCase(Locale.US) + " " + uiState.name().toLowerCase(Locale.US)))
+                    .hoverEvent(HoverEvent.showText(uiState == state
+                            ? Caption.of("worldedit.sideeffect.box.current")
+                            : Caption.of("worldedit.sideeffect.box.change-to", Caption.of(uiState.getDisplayName()))
+                    ))
+            );
+        }
+
+        return builder.build();
+    }
+
+    @Override
+    public int getComponentsSize() {
+        return getSideEffects().size();
+    }
+}
